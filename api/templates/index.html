@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgriSmart CI — Recommandation Agricole</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --soil:   #3B2A1A;
+  --earth:  #5C3D1E;
+  --clay:   #8B5E3C;
+  --sand:   #C49A6C;
+  --straw:  #E8D5A3;
+  --cream:  #F5EFE0;
+  --leaf:   #2D5016;
+  --moss:   #4A7C2F;
+  --sage:   #7BA05B;
+  --sprout: #A8C97F;
+  --mist:   #D4E8B8;
+  --gold:   #C8860A;
+  --amber:  #E6A817;
+  --rust:   #A0522D;
+  --ivory:  #FAF6EE;
+  --shadow: rgba(59,42,26,0.1);
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-body);background:var(--ivory);color:var(--soil);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 0%,rgba(168,201,127,.15) 0%,transparent 55%),radial-gradient(ellipse at 85% 100%,rgba(196,154,108,.12) 0%,transparent 55%);pointer-events:none;z-index:0}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:68px;background:var(--soil);display:flex;flex-direction:column;align-items:center;padding:20px 0;z-index:100;transition:width .3s cubic-bezier(.4,0,.2,1);overflow:hidden}
+.sidebar:hover{width:216px}
+.sidebar-logo{width:38px;height:38px;background:var(--moss);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;margin-bottom:28px}
+.nav-item{width:100%;display:flex;align-items:center;gap:12px;padding:11px 15px;cursor:pointer;transition:background .15s;color:rgba(245,239,224,.5);font-size:13px;font-weight:500;white-space:nowrap;border-left:3px solid transparent}
+.nav-item:hover{background:rgba(255,255,255,.06);color:var(--cream)}
+.nav-item.active{background:rgba(168,201,127,.14);color:var(--sprout);border-left-color:var(--sprout)}
+.nav-icon{font-size:18px;flex-shrink:0;width:22px;text-align:center}
+.nav-label{opacity:0;transition:opacity .2s}
+.sidebar:hover .nav-label{opacity:1}
+.sidebar-bottom{margin-top:auto;width:100%}
+
+/* MAIN */
+.main{margin-left:68px;min-height:100vh;position:relative;z-index:1}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;background:rgba(250,246,238,.88);backdrop-filter:blur(10px);border-bottom:1px solid rgba(139,94,60,.1);position:sticky;top:0;z-index:50}
+.topbar-title{font-family:var(--font-display);font-size:1.35rem;font-weight:700;color:var(--soil);letter-spacing:-.02em}
+.topbar-sub{font-size:11.5px;color:var(--clay);margin-top:1px}
+.api-badge{display:flex;align-items:center;gap:7px;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;background:var(--mist);color:var(--leaf);border:1px solid var(--sprout);transition:all .3s}
+.api-badge.off{background:#fde8e8;color:#8b0000;border-color:#e57373}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--moss);animation:pulse 2s infinite}
+.api-badge.off .pulse{background:#e53935;animation:none}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.82)}}
+
+/* PAGES */
+.page{display:none;padding:28px 32px;animation:fadeUp .3s ease}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+/* PAGE HEADER */
+.pg-tag{display:inline-block;padding:2px 10px;border-radius:4px;font-size:10.5px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;background:var(--mist);color:var(--leaf);margin-bottom:8px}
+.pg-title{font-family:var(--font-display);font-size:1.9rem;font-weight:700;color:var(--soil);letter-spacing:-.03em;line-height:1.1;margin-bottom:5px}
+.pg-sub{font-size:13px;color:var(--clay);max-width:500px;margin-bottom:26px}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+
+/* CARDS */
+.card{background:white;border-radius:18px;padding:26px;border:1px solid rgba(139,94,60,.09);box-shadow:0 2px 14px var(--shadow);margin-bottom:0}
+.card-title{font-family:var(--font-display);font-size:1.05rem;font-weight:600;color:var(--soil);margin-bottom:3px}
+.card-sub{font-size:12px;color:var(--clay);margin-bottom:20px}
+
+/* STAT CARD */
+.stat-card{background:white;border-radius:16px;padding:20px;border:1px solid rgba(139,94,60,.08);box-shadow:0 2px 12px var(--shadow);transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px var(--shadow)}
+.stat-icon{font-size:20px;margin-bottom:10px}
+.stat-val{font-family:var(--font-display);font-size:1.9rem;font-weight:700;color:var(--soil);line-height:1}
+.stat-lbl{font-size:11.5px;color:var(--clay);margin-top:3px}
+.stat-note{font-size:11px;color:var(--sage);margin-top:7px;font-weight:500}
+
+/* FORM */
+.fg{margin-bottom:14px}
+label{display:block;font-size:10.5px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--clay);margin-bottom:5px}
+input,select{width:100%;padding:10px 13px;border:1.5px solid rgba(139,94,60,.16);border-radius:9px;font-size:14px;font-family:var(--font-body);background:var(--ivory);color:var(--soil);transition:border-color .2s,box-shadow .2s;appearance:none}
+input:focus,select:focus{outline:none;border-color:var(--moss);box-shadow:0 0 0 3px rgba(74,124,47,.11);background:white}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%238B5E3C' d='M5 7L0 0h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px}
+
+/* BUTTONS */
+.btn{width:100%;padding:12px 18px;border:none;border-radius:11px;font-size:13.5px;font-weight:500;font-family:var(--font-body);cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn+.btn{margin-top:7px}
+.btn-green{background:var(--leaf);color:var(--cream)}
+.btn-green:hover{background:var(--moss);transform:translateY(-1px);box-shadow:0 6px 18px rgba(45,80,22,.28)}
+.btn-sand{background:var(--straw);color:var(--earth)}
+.btn-sand:hover{background:var(--sand);color:white;transform:translateY(-1px)}
+.btn-gold{background:var(--gold);color:white}
+.btn-gold:hover{background:var(--amber);transform:translateY(-1px);box-shadow:0 6px 18px rgba(200,134,10,.28)}
+.btn-outline{background:transparent;color:var(--leaf);border:1.5px solid var(--moss)}
+.btn-outline:hover{background:var(--mist)}
+
+/* RECO */
+.reco-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(139,94,60,.07);animation:slideIn .3s ease both}
+.reco-item:last-child{border-bottom:none}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.reco-rank{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;flex-shrink:0;background:var(--mist);color:var(--leaf)}
+.reco-rank.gold{background:linear-gradient(135deg,#C8860A,#E6A817);color:white}
+.reco-name{flex:1;font-weight:500;font-size:13.5px}
+.reco-bw{flex:2}
+.reco-bg{height:5px;background:var(--mist);border-radius:3px;overflow:hidden}
+.reco-bar{height:100%;background:linear-gradient(90deg,var(--moss),var(--sage));border-radius:3px;width:0;transition:width .85s cubic-bezier(.4,0,.2,1)}
+.reco-sc{font-size:11px;color:var(--clay);margin-top:2px;font-weight:500}
+
+/* MODE BADGE */
+.mbadge{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:20px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.mb-rich{background:var(--mist);color:var(--leaf)}
+.mb-partial{background:#fff3cd;color:#856404}
+.mb-cold{background:#e8f4fd;color:#1565c0}
+
+/* PROFIL HERO */
+.profile-hero{display:flex;align-items:center;gap:18px;padding:20px;background:linear-gradient(135deg,var(--soil),var(--earth));border-radius:14px;color:var(--cream);margin-bottom:18px}
+.profile-avatar{width:58px;height:58px;border-radius:50%;background:var(--moss);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;border:2.5px solid var(--sand)}
+.profile-name{font-family:var(--font-display);font-size:1.2rem;font-weight:700}
+.profile-region{font-size:12px;opacity:.72;margin-top:2px}
+.profile-stat{margin-left:auto;text-align:center;background:rgba(255,255,255,.1);border-radius:10px;padding:10px 16px}
+.profile-stat .n{font-family:var(--font-display);font-size:1.8rem;font-weight:700}
+.profile-stat .l{font-size:10.5px;opacity:.65}
+.prow{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(139,94,60,.08);font-size:13px}
+.prow:last-child{border-bottom:none}
+.prow span:first-child{color:var(--clay)}
+.prow span:last-child{font-weight:500}
+
+/* XAI */
+.xai-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.xai-card{border-radius:13px;padding:16px;display:flex;flex-direction:column;gap:5px}
+.xai-card.ok{background:var(--mist)}
+.xai-card.warn{background:#fde8d8}
+.xai-card.neu{background:var(--straw)}
+.xai-ico{font-size:20px}
+.xai-lbl{font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--clay)}
+.xai-val{font-family:var(--font-display);font-size:1.3rem;font-weight:700;color:var(--soil)}
+.xai-desc{font-size:11px;color:var(--clay)}
+
+/* TABLE CULTURES */
+.ctable{width:100%;border-collapse:collapse}
+.ctable th{text-align:left;font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--clay);padding:9px 13px;border-bottom:2px solid rgba(139,94,60,.11)}
+.ctable td{padding:10px 13px;font-size:13px;border-bottom:1px solid rgba(139,94,60,.06)}
+.ctable tr:hover td{background:var(--ivory)}
+.ctable tr:last-child td{border-bottom:none}
+.cbar-w{display:flex;align-items:center;gap:8px}
+.cbar-bg{flex:1;height:5px;background:var(--mist);border-radius:3px;overflow:hidden}
+.cbar-fill{height:100%;background:linear-gradient(90deg,var(--moss),var(--sage));border-radius:3px}
+
+/* STATUS PILL */
+.spill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10.5px;font-weight:600;background:var(--mist);color:var(--leaf)}
+.spill.cold{background:#e8f4fd;color:#1565c0}
+.spill.partial{background:#fff3cd;color:#856404}
+
+/* INFO CHIPS */
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.chip{background:var(--ivory);border:1px solid rgba(139,94,60,.1);border-radius:11px;padding:12px 14px;display:flex;align-items:center;gap:9px}
+.chip-ico{font-size:18px}
+.chip-v{font-weight:600;font-size:13.5px;color:var(--soil)}
+.chip-l{font-size:10.5px;color:var(--clay)}
+
+/* SAISON */
+.saison-bar{display:flex;gap:3px;margin-top:7px}
+.ss{flex:1;height:7px;border-radius:3px;background:rgba(139,94,60,.12)}
+.ss.a{background:var(--moss)}
+.ss.m{background:var(--sage)}
+
+/* EMPTY / LOADING */
+.empty{text-align:center;padding:36px 16px;color:var(--clay)}
+.empty .ico{font-size:38px;margin-bottom:10px;opacity:.45}
+.empty p{font-size:13px}
+.ldots span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--moss);margin:0 2px;animation:ldot 1.2s infinite}
+.ldots span:nth-child(2){animation-delay:.2s}
+.ldots span:nth-child(3){animation-delay:.4s}
+@keyframes ldot{0%,80%,100%{transform:scale(0);opacity:.3}40%{transform:scale(1);opacity:1}}
+.err-msg{background:#fde8e8;color:#8b0000;border-radius:9px;padding:11px 14px;font-size:13px}
+.divider{height:1px;background:rgba(139,94,60,.09);margin:18px 0}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-thumb{background:var(--sand);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">🌿</div>
+  <div class="nav-item active" onclick="nav('dashboard')" id="nav-dashboard"><span class="nav-icon">🏡</span><span class="nav-label">Tableau de bord</span></div>
+  <div class="nav-item" onclick="nav('recommend')" id="nav-recommend"><span class="nav-icon">🌾</span><span class="nav-label">Recommandations</span></div>
+  <div class="nav-item" onclick="nav('profile')" id="nav-profile"><span class="nav-icon">👤</span><span class="nav-label">Profil agriculteur</span></div>
+  <div class="nav-item" onclick="nav('coldstart')" id="nav-coldstart"><span class="nav-icon">🌱</span><span class="nav-label">Nouvel agriculteur</span></div>
+  <div class="nav-item" onclick="nav('xai')" id="nav-xai"><span class="nav-icon">🔬</span><span class="nav-label">Analyse XAI</span></div>
+  <div class="nav-item" onclick="nav('cultures')" id="nav-cultures"><span class="nav-icon">📊</span><span class="nav-label">Cultures</span></div>
+  <div class="sidebar-bottom">
+    <div class="nav-item" onclick="checkHealth()"><span class="nav-icon">⚙️</span><span class="nav-label">Actualiser API</span></div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">AgriSmart CI</div>
+      <div class="topbar-sub">Système intelligent de recommandation agricole — Côte d'Ivoire</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="font-size:11.5px;color:var(--clay)" id="date-lbl"></div>
+      <div class="api-badge" id="api-badge"><div class="pulse"></div><span id="api-lbl">Connexion...</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <div class="page active" id="page-dashboard">
+    <div class="pg-tag">Vue d'ensemble</div>
+    <div class="pg-title">Tableau de bord</div>
+    <div class="pg-sub">Statistiques globales du système de recommandation agricole ivoirien</div>
+
+    <div class="g4">
+      <div class="stat-card"><div class="stat-icon">🌾</div><div class="stat-val" id="s-score">—</div><div class="stat-lbl">Score moyen de rentabilité</div><div class="stat-note" id="s-med">Médiane : —</div></div>
+      <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-val" id="s-cult" style="font-size:1.2rem">—</div><div class="stat-lbl">Meilleure culture</div><div class="stat-note">Rendement optimal</div></div>
+      <div class="stat-card"><div class="stat-icon">📍</div><div class="stat-val" id="s-reg" style="font-size:1rem">—</div><div class="stat-lbl">Région la plus productive</div><div class="stat-note">Performance élevée</div></div>
+      <div class="stat-card"><div class="stat-icon">🌿</div><div class="stat-val" id="s-nc">—</div><div class="stat-lbl">Cultures répertoriées</div><div class="stat-note" id="s-nr">— régions</div></div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">⚡ Accès rapide</div>
+        <div class="card-sub">Consultez une recommandation en un clic</div>
+        <div class="fg"><label>ID Agriculteur</label><select id="q-id" size="8"><option>Chargement...</option></select></div>
+        <button class="btn btn-green" onclick="quickReco()">🌾 Voir mes recommandations</button>
+        <button class="btn btn-sand" onclick="quickProfile()">👤 Voir mon profil</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 Calendrier cultural — CI</div>
+        <div class="card-sub">Saisons agricoles indicatives (deux grandes saisons des pluies)</div>
+        <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--clay);margin-bottom:4px"><span>Jan</span><span>Mar</span><span>Mai</span><span>Jul</span><span>Sep</span><span>Nov</span></div>
+        <div class="saison-bar">
+          <div class="ss m"></div><div class="ss a"></div><div class="ss a"></div>
+          <div class="ss m"></div><div class="ss"></div><div class="ss m"></div>
+          <div class="ss a"></div><div class="ss a"></div><div class="ss m"></div>
+          <div class="ss"></div><div class="ss m"></div><div class="ss m"></div>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:9px;font-size:11px;color:var(--clay)">
+          <span>🟢 Grande saison</span><span>🟡 Petite saison</span><span>⚪ Saison sèche</span>
+        </div>
+        <div class="chips">
+          <div class="chip"><div class="chip-ico">🌧️</div><div><div class="chip-v">1 200 mm</div><div class="chip-l">Pluviométrie moy.</div></div></div>
+          <div class="chip"><div class="chip-ico">🌡️</div><div><div class="chip-v">26 °C</div><div class="chip-l">Température moy.</div></div></div>
+          <div class="chip"><div class="chip-ico">☀️</div><div><div class="chip-v">2 saisons</div><div class="chip-l">Cycles de pluie</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ RECOMMANDATIONS ═══ -->
+  <div class="page" id="page-recommend">
+    <div class="pg-tag">IA Hybride</div>
+    <div class="pg-title">Recommandations personnalisées</div>
+    <div class="pg-sub">Modèle hybride KNN + Filtrage contenu + Random Forest</div>
+    <div class="g2">
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">🌾 Paramètres</div>
+          <div class="card-sub">Identifiant de l'agriculteur à analyser</div>
+          <div class="fg"><label>ID Agriculteur</label><select id="r-aid" size="8"><option>Chargement...</option></select></div>
+          <div class="fg"><label>Nombre de recommandations</label>
+            <select id="r-nr"><option value="3">3 cultures</option><option value="5" selected>5 cultures</option><option value="8">8 cultures</option><option value="10">10 cultures</option></select>
+          </div>
+          <button class="btn btn-green" onclick="getReco()">🔍 Calculer les recommandations</button>
+        </div>
+        <div class="card">
+          <div class="card-title">ℹ️ Modes du système</div>
+          <div class="card-sub">Algorithme sélectionné selon le profil</div>
+          <div style="font-size:12px;line-height:1.9;color:var(--clay)">
+            <div><span class="mbadge mb-rich">Hybride complet</span>&nbsp; ≥ 3 notations — KNN 40% + Contenu 20% + RF 40%</div>
+            <div><span class="mbadge mb-partial">Hybride partiel</span>&nbsp; 1-2 notations — KNN 20% + Contenu 40% + RF 40%</div>
+            <div><span class="mbadge mb-cold">Cold Start</span>&nbsp; 0 notation — Contenu 50% + RF 50%</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🏅 Résultats</div>
+        <div class="card-sub">Cultures recommandées par ordre de score</div>
+        <div id="reco-res"><div class="empty"><div class="ico">🌾</div><p>Lancez une recherche pour afficher les résultats</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PROFIL ═══ -->
+  <div class="page" id="page-profile">
+    <div class="pg-tag">Agriculteur</div>
+    <div class="pg-title">Profil détaillé</div>
+    <div class="pg-sub">Informations complètes et statut dans le système de recommandation</div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">🔎 Rechercher un profil</div>
+        <div class="card-sub">Entrez l'identifiant de l'agriculteur</div>
+        <div class="fg"><label>ID Agriculteur</label><select id="p-aid" size="8"><option>Chargement...</option></select></div>
+        <button class="btn btn-green" onclick="getProfile()">👤 Charger le profil</button>
+        <button class="btn btn-outline" onclick="goReco()" style="margin-top:7px">🌾 Voir ses recommandations</button>
+      </div>
+      <div class="card"><div id="profile-res"><div class="empty"><div class="ico">👤</div><p>Recherchez un agriculteur pour afficher son profil</p></div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ COLD START ═══ -->
+  <div class="page" id="page-coldstart">
+    <div class="pg-tag">Nouvel agriculteur</div>
+    <div class="pg-title">Démarrage à froid</div>
+    <div class="pg-sub">Recommandations basées sur la popularité régionale pour les nouveaux profils</div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">🌱 Nouveau profil agriculteur</div>
+        <div class="card-sub">Renseignez les informations de base</div>
+        <div class="fg"><label>Région</label>
+          <select id="cs-reg"><option>Nord-Savane</option><option>Sud-Foret</option><option>Ouest-Montagne</option><option>Est</option><option>Centre</option></select>
+        </div>
+        <div class="fg"><label>Capital disponible (FCFA)</label><input id="cs-cap" type="number" value="750000" min="0"></div>
+        <div class="fg"><label>Années d'expérience</label><input id="cs-exp" type="number" value="3" min="0" max="40"></div>
+        <div class="fg"><label>Superficie (hectares)</label><input id="cs-sup" type="number" value="2.5" step="0.5" min="0.1"></div>
+        <div class="fg"><label>Membre d'une coopérative ?</label>
+          <select id="cs-coop"><option value="1">Oui — membre actif</option><option value="0">Non</option></select>
+        </div>
+        <div class="fg"><label>Accès au crédit agricole ?</label>
+          <select id="cs-cred"><option value="1">Oui</option><option value="0">Non</option></select>
+        </div>
+        <button class="btn btn-gold" onclick="getCold()">🌱 Obtenir les recommandations</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Résultats</div>
+        <div class="card-sub">Cultures populaires dans votre région</div>
+        <div id="cold-res"><div class="empty"><div class="ico">🌱</div><p>Remplissez le formulaire pour démarrer</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ XAI ═══ -->
+  <div class="page" id="page-xai">
+    <div class="pg-tag">Explicabilité IA</div>
+    <div class="pg-title">Analyse XAI</div>
+    <div class="pg-sub">Comprendre pourquoi une culture est recommandée à un agriculteur donné</div>
+    <div class="g2">
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">🔬 Paramètres d'analyse</div>
+          <div class="card-sub">Sélectionnez l'agriculteur et la culture</div>
+          <div class="fg"><label>ID Agriculteur</label><select id="x-aid" size="8" onchange="loadXAICultures()"><option>Chargement...</option></select></div>
+          <div class="fg"><label>Culture à analyser</label>
+            <select id="x-cult"><option>Chargement...</option></select>
+          </div>
+          <button class="btn btn-green" onclick="getXAI()">🔬 Analyser</button>
+        </div>
+        <div class="card">
+          <div class="card-title">📖 Métriques</div>
+          <div class="card-sub">Ce que chaque indicateur mesure</div>
+          <div style="font-size:12px;line-height:1.8;color:var(--clay)">
+            <p><strong style="color:var(--soil)">Capital suffisant</strong> — votre capital couvre-t-il le coût de production à l'hectare ?</p>
+            <p><strong style="color:var(--soil)">Adéquation climatique</strong> — la pluviométrie de votre zone correspond-elle aux besoins de la culture ?</p>
+            <p><strong style="color:var(--soil)">ROI estimé</strong> — retour sur investissement projeté : (prix × rendement − coût) / coût</p>
+            <p><strong style="color:var(--soil)">Niveau de risque</strong> — risque inhérent à la culture dans votre contexte</p>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">💡 Résultat de l'analyse</div>
+        <div class="card-sub">Facteurs clés de la recommandation</div>
+        <div id="xai-res"><div class="empty"><div class="ico">🔬</div><p>Lancez une analyse pour comprendre la recommandation</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CULTURES ═══ -->
+  <div class="page" id="page-cultures">
+    <div class="pg-tag">Référentiel</div>
+    <div class="pg-title">Cultures répertoriées</div>
+    <div class="pg-sub">Toutes les cultures disponibles classées par score de rentabilité moyen</div>
+    <div class="card">
+      <div id="cult-res"><div class="empty"><div class="ldots"><span></span><span></span><span></span></div><p style="margin-top:12px">Chargement...</p></div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = "";
+
+/* FORMATAGE CULTURES */
+const CULTURES_LABELS = {
+  'Palmier_huile': 'Palmier à huile',
+  'Mais':          'Maïs',
+  'Hevea':         'Hévéa',
+  'Cafe':          'Café',
+  'Manioc':        'Manioc',
+  'Cacao':         'Cacao',
+  'Anacarde':      'Anacarde',
+  'Mangue':        'Mangue',
+  'Riz':           'Riz',
+  'Igname':        'Igname',
+};
+function fmt(nom) {
+  return CULTURES_LABELS[nom] || nom;
+}
+
+/* NAV */
+function nav(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'cultures') loadCultures();
+}
+
+/* DATE */
+const dn = new Date();
+const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+const mos = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+document.getElementById('date-lbl').textContent = days[dn.getDay()] + ' ' + dn.getDate() + ' ' + mos[dn.getMonth()] + ' ' + dn.getFullYear();
+
+/* HEALTH */
+async function checkHealth() {
+  try {
+    const d = await (await fetch(API + '/health')).json();
+    document.getElementById('api-badge').className = 'api-badge';
+    document.getElementById('api-lbl').textContent = 'API v' + d.version + ' en ligne';
+  } catch {
+    document.getElementById('api-badge').className = 'api-badge off';
+    document.getElementById('api-lbl').textContent = 'API hors ligne';
+  }
+}
+
+/* STATS */
+async function loadStats() {
+  try {
+    const d = await (await fetch(API + '/stats')).json();
+    document.getElementById('s-score').textContent = d.score_moyen;
+    document.getElementById('s-med').textContent = 'Médiane : ' + d.score_median;
+    document.getElementById('s-cult').textContent = d.meilleure_culture;
+    document.getElementById('s-reg').textContent = d.meilleure_region;
+    document.getElementById('s-nc').textContent = d.cultures ? d.cultures.length : '—';
+    document.getElementById('s-nr').textContent = (d.regions ? d.regions.length : '—') + ' régions couvertes';
+  } catch {}
+}
+
+/* QUICK */
+function syncSelect(srcId, dstId) {
+  const src = document.getElementById(srcId);
+  const dst = document.getElementById(dstId);
+  if (!src || !dst) return;
+  dst.value = src.value;
+}
+function quickReco() { syncSelect('q-id','r-aid'); nav('recommend'); getReco(); }
+function quickProfile() { syncSelect('q-id','p-aid'); nav('profile'); getProfile(); }
+function goReco() { syncSelect('p-aid','r-aid'); nav('recommend'); getReco(); }
+
+/* LOADER HTML */
+function loader() { return '<div class="empty"><div class="ldots"><span></span><span></span><span></span></div></div>'; }
+
+/* RECOMMANDATIONS */
+async function getReco() {
+  const div = document.getElementById('reco-res');
+  div.innerHTML = loader();
+  try {
+    const r = await fetch(API + '/recommend', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ agriculteur_id: document.getElementById('r-aid').value.trim(), n_recommandations: parseInt(document.getElementById('r-nr').value) })
+    });
+    if (!r.ok) throw new Error((await r.json()).erreur || 'Erreur');
+    const d = await r.json();
+    const mc = d.mode.includes('complet') ? 'mb-rich' : d.mode.includes('partiel') ? 'mb-partial' : 'mb-cold';
+    const ml = {'hybride_complet':'Hybride complet','hybride_partiel':'Hybride partiel','cold_start':'Cold Start'}[d.mode] || d.mode;
+    const mx = Math.max(...d.recommandations.map(x => x.score));
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <span class="mbadge ${mc}">${ml}</span>
+        <span style="font-size:11.5px;color:var(--clay)">${d.n_notations} notation(s)</span>
+      </div>
+      ${d.recommandations.map((rr, i) => `
+        <div class="reco-item" style="animation-delay:${i*.07}s">
+          <div class="reco-rank ${rr.rang===1?'gold':''}">${rr.rang}</div>
+          <div class="reco-name">${fmt(rr.culture)}</div>
+          <div class="reco-bw">
+            <div class="reco-bg"><div class="reco-bar" id="b${i}"></div></div>
+            <div class="reco-sc">${rr.score.toFixed(1)} pts</div>
+          </div>
+        </div>`).join('')}`;
+    setTimeout(() => d.recommandations.forEach((rr, i) => {
+      const el = document.getElementById('b' + i);
+      if (el) el.style.width = Math.round(rr.score / mx * 100) + '%';
+    }), 60);
+  } catch(e) { div.innerHTML = `<div class="err-msg">❌ ${e.message}</div>`; }
+}
+
+/* PROFIL */
+async function getProfile() {
+  const div = document.getElementById('profile-res');
+  div.innerHTML = loader();
+  try {
+    const id = document.getElementById('p-aid').value.trim();
+    const r = await fetch(API + '/profile/' + id);
+    if (!r.ok) throw new Error((await r.json()).erreur || 'Non trouvé');
+    const d = await r.json();
+    const sc = d.statut === 'Riche' ? '' : d.statut === 'Partiel' ? 'partial' : 'cold';
+    const sl = {'Riche':'Profil complet','Partiel':'Profil partiel','Cold Start':'Nouveau profil'}[d.statut] || d.statut;
+    div.innerHTML = `
+      <div class="profile-hero">
+        <div class="profile-avatar">🧑‍🌾</div>
+        <div>
+          <div class="profile-name">${d.agriculteur_id}</div>
+          <div class="profile-region">📍 ${d.region}</div>
+          <div style="margin-top:7px"><span class="spill ${sc}">${sl}</span></div>
+        </div>
+        <div class="profile-stat"><div class="n">${d.n_notations}</div><div class="l">notations</div></div>
+      </div>
+      <div class="prow"><span>Expérience</span><span>${d.experience_ans} ans</span></div>
+      <div class="prow"><span>Capital</span><span>${Number(d.capital_fcfa).toLocaleString('fr-FR')} FCFA</span></div>
+      <div class="prow"><span>Région</span><span>${d.region}</span></div>
+      <div class="prow"><span>Statut système</span><span>${d.statut}</span></div>`;
+  } catch(e) { div.innerHTML = `<div class="err-msg">❌ ${e.message}</div>`; }
+}
+
+/* COLD START */
+async function getCold() {
+  const div = document.getElementById('cold-res');
+  div.innerHTML = loader();
+  try {
+    const r = await fetch(API + '/cold-start', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        region: document.getElementById('cs-reg').value,
+        capital_fcfa: parseFloat(document.getElementById('cs-cap').value),
+        experience_ans: parseFloat(document.getElementById('cs-exp').value),
+        superficie_ha: parseFloat(document.getElementById('cs-sup').value),
+        membre_cooperative: parseInt(document.getElementById('cs-coop').value),
+        acces_credit: parseInt(document.getElementById('cs-cred').value),
+        pluviometrie_mm: 1000, n_recommandations: 5
+      })
+    });
+    const d = await r.json();
+    const mx = Math.max(...d.recommandations.map(x => x.score_moyen));
+    div.innerHTML = `
+      <div style="margin-bottom:14px">
+        <span class="mbadge mb-cold">Cold Start</span>
+        <span style="font-size:11.5px;color:var(--clay);margin-left:8px">Région : ${d.region}</span>
+      </div>
+      ${d.recommandations.map((rr, i) => `
+        <div class="reco-item" style="animation-delay:${i*.07}s">
+          <div class="reco-rank ${rr.rang===1?'gold':''}">${rr.rang}</div>
+          <div class="reco-name">${fmt(rr.culture)}</div>
+          <div class="reco-bw">
+            <div class="reco-bg"><div class="reco-bar" id="cb${i}"></div></div>
+            <div class="reco-sc">${rr.score_moyen.toFixed(1)} pts</div>
+          </div>
+        </div>`).join('')}`;
+    setTimeout(() => d.recommandations.forEach((rr, i) => {
+      const el = document.getElementById('cb' + i);
+      if (el) el.style.width = Math.round(rr.score_moyen / mx * 100) + '%';
+    }), 60);
+  } catch(e) { div.innerHTML = `<div class="err-msg">❌ ${e.message}</div>`; }
+}
+
+/* XAI */
+async function getXAI() {
+  const div = document.getElementById('xai-res');
+  div.innerHTML = loader();
+  try {
+    const aid = document.getElementById('x-aid').value.trim();
+    const cult = document.getElementById('x-cult').value;
+    const r = await fetch(`${API}/explain/${aid}?culture=${cult}`);
+    if (!r.ok) throw new Error('Non trouvé');
+    const d = await r.json();
+    const roi = (d.roi_estime * 100).toFixed(1);
+    const risq = (d.risque * 100).toFixed(0);
+    const risqLabel = parseInt(risq) < 35 ? 'Risque faible' : parseInt(risq) < 55 ? 'Risque modéré' : 'Risque élevé';
+    div.innerHTML = `
+      <div style="margin-bottom:12px;font-size:12.5px;color:var(--clay)">
+        Analyse de <strong style="color:var(--soil)">${fmt(d.culture)}</strong> pour <strong style="color:var(--soil)">${d.agriculteur_id}</strong>
+      </div>
+      <div class="xai-grid">
+        <div class="xai-card ${d.capital_suffisant?'ok':'warn'}">
+          <div class="xai-ico">${d.capital_suffisant?'✅':'⚠️'}</div>
+          <div class="xai-lbl">Capital</div>
+          <div class="xai-val">${d.capital_suffisant?'Suffisant':'Insuffisant'}</div>
+          <div class="xai-desc">${d.capital_suffisant?'Production finançable':'Capital trop faible'}</div>
+        </div>
+        <div class="xai-card ${d.adequation_climatique?'ok':'warn'}">
+          <div class="xai-ico">${d.adequation_climatique?'🌦️':'☀️'}</div>
+          <div class="xai-lbl">Climat</div>
+          <div class="xai-val">${d.adequation_climatique?'Adapté':'Risqué'}</div>
+          <div class="xai-desc">${d.adequation_climatique?'Pluviométrie compatible':'Zone peu adaptée'}</div>
+        </div>
+        <div class="xai-card ${parseFloat(roi)>0?'ok':'warn'}">
+          <div class="xai-ico">${parseFloat(roi)>0?'📈':'📉'}</div>
+          <div class="xai-lbl">ROI estimé</div>
+          <div class="xai-val">${roi} %</div>
+          <div class="xai-desc">Retour sur investissement</div>
+        </div>
+        <div class="xai-card neu">
+          <div class="xai-ico">⚖️</div>
+          <div class="xai-lbl">Risque</div>
+          <div class="xai-val">${risq} %</div>
+          <div class="xai-desc">${risqLabel}</div>
+        </div>
+      </div>`;
+  } catch(e) { div.innerHTML = `<div class="err-msg">❌ ${e.message}</div>`; }
+}
+
+/* CULTURES */
+async function loadCultures() {
+  const div = document.getElementById('cult-res');
+  try {
+    const d = await (await fetch(API + '/cultures')).json();
+    const mx = Math.max(...d.cultures.map(c => c.mean));
+    div.innerHTML = `
+      <table class="ctable">
+        <thead><tr><th>Culture</th><th>Score rentabilité moyen</th><th>Observations</th></tr></thead>
+        <tbody>
+          ${d.cultures.sort((a,b)=>b.mean-a.mean).map((c,i)=>`
+          <tr>
+            <td><strong>${fmt(c.culture)}</strong> ${i===0?'🏆':''}</td>
+            <td><div class="cbar-w"><div class="cbar-bg"><div class="cbar-fill" style="width:${Math.round(c.mean/mx*100)}%"></div></div><span style="font-size:11.5px;color:var(--clay);min-width:34px">${c.mean}</span></div></td>
+            <td style="color:var(--clay)">${c.count} entrées</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch { div.innerHTML = '<div class="err-msg">❌ Impossible de charger les cultures</div>'; }
+}
+
+/* CULTURES XAI — filtrées par agriculteur */
+async function loadXAICultures() {
+  const aid = document.getElementById('x-aid');
+  const sel = document.getElementById('x-cult');
+  if (!aid || !sel || !aid.value) return;
+  try {
+    const d = await (await fetch(API + '/agriculteur/' + aid.value + '/cultures')).json();
+    if (d.cultures) sel.innerHTML = d.cultures.map(cu => `<option value="${cu}">${fmt(cu)}</option>`).join('');
+  } catch {}
+}
+
+/* AGRICULTEURS */
+async function loadAgriculteurs() {
+  try {
+    const d = await (await fetch(API + '/agriculteurs')).json();
+    const html = d.agriculteurs.map(a => `<option value="${a}">${a}</option>`).join('');
+    ['q-id','r-aid','p-aid','x-aid'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.innerHTML = html; el.selectedIndex = 0; }
+    });
+    await loadXAICultures();
+  } catch {}
+}
+
+/* INIT */
+checkHealth();
+loadStats();
+loadXAICultures();
+loadAgriculteurs();
+setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>
