@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "date_entrainement": "2026-03-14 11:50",
+  "n_observations": 672,
+  "n_agriculteurs": 200,
+  "n_cultures": 10,
+  "ridge_r2": 0.8051,
+  "rf_r2": 0.9216,
+  "cultures": [
+    "Anacarde",
+    "Cacao",
+    "Café",
+    "Hévéa",
+    "Igname",
+    "Mangue",
+    "Manioc",
+    "Maïs",
+    "Palmier_huile",
+    "Riz"
+  ],
+  "regions": [
+    "Centre",
+    "Est",
+    "Nord-Savane",
+    "Ouest-Montagne",
+    "Sud-Forêt"
+  ]
+}
