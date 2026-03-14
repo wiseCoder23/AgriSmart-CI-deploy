@@ -22,7 +22,7 @@ sim_df          = charger('sim_df')
 df_ref          = charger('df_reference')
 risque_map      = charger('risque_map')
 pluvio_opt      = charger('pluvio_opt')
-with open(os.path.join(MODEL_DIR, 'metadata.json')) as f:
+with open(os.path.join(MODEL_DIR, 'metadata.json'), encoding='utf-8', errors='ignore') as f:
     metadata = json.load(f)
 
 @app.route('/')
